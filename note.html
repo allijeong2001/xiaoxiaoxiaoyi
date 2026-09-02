@@ -83,18 +83,6 @@
 
   <!-- 状态三下方：再写一张 -->
   <button class="note-btn ghost" id="againBtn" style="display:none;max-width:380px"></button>
-
-  <!-- 字卡收藏：可随时添加 / 删除，本地存储 -->
-  <div class="card-section">
-    <div class="card-section-head">
-      <span class="card-section-title" id="cardTitle"></span>
-    </div>
-    <div class="card-input-row">
-      <input type="text" id="cardInput" maxlength="30">
-      <button class="card-add-btn" id="cardAdd" aria-label="添加字卡">＋</button>
-    </div>
-    <div class="card-grid" id="cardGrid"></div>
-  </div>
 </div>
 
 <script src="config.js"></script>
@@ -226,27 +214,6 @@
     deco.appendChild(s);
   }
 
-  /* ---------- 字卡收藏 ---------- */
-  var store = window.WordCardStore;
-  var CARD_KEY = 'lover_note_cards';
-  var cardGrid = document.getElementById('cardGrid');
-  document.getElementById('cardTitle').textContent = '我的字卡收藏';
-  var cardInput = document.getElementById('cardInput');
-  cardInput.placeholder = '写下想记住的一句话…';
-
-  function addCard() {
-    if (store.add(CARD_KEY, cardInput.value)) {
-      cardInput.value = '';
-      store.render(cardGrid, CARD_KEY, '还没有字卡，写一张收藏吧～');
-    } else {
-      cardInput.classList.add('shake');
-      setTimeout(function () { cardInput.classList.remove('shake'); }, 450);
-    }
-  }
-  document.getElementById('cardAdd').addEventListener('click', addCard);
-  cardInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') addCard(); });
-
-  store.render(cardGrid, CARD_KEY, '还没有字卡，写一张收藏吧～');
 })();
 </script>
 </body>

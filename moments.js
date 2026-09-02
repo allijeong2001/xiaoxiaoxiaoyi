@@ -138,6 +138,19 @@
       try { localStorage.setItem(key, JSON.stringify(list)); } catch (e) {}
       return list;
     },
+    /* 修改某张字卡的文字；文字为空 / 未找到时返回 false */
+    update: function (key, id, text) {
+      text = String(text == null ? '' : text).trim();
+      if (!text) return false;
+      var list = this.get(key);
+      var hit = false;
+      list.forEach(function (c) {
+        if (String(c.id) === String(id)) { c.text = text; hit = true; }
+      });
+      if (!hit) return false;
+      try { localStorage.setItem(key, JSON.stringify(list)); } catch (e) { return false; }
+      return true;
+    },
     /* 渲染字卡网格；empty 为空提示文字 */
     render: function (container, key, emptyText) {
       var list = this.get(key);

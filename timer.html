@@ -169,7 +169,13 @@
   }
 
   function showBubble() {
-    var list = t.encouragementList || [];
+    /* 鼓励语池 = 内置鼓励语 + 我添加的「学习互动」字卡（同一池子等概率弹出） */
+    var list = (t.encouragementList || []).slice();
+    if (window.WordCardStore) {
+      (window.WordCardStore.get('lover_timer_cards') || []).forEach(function (card) {
+        if (card && card.text) list.push(card.text);
+      });
+    }
     if (!list.length) return;
     bubbleText.textContent = list[Math.floor(Math.random() * list.length)];
     bubble.classList.remove('hide');

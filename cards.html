@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>字卡库</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="starfield"></div>
+<div class="lemon-sea">
+  <span class="sea-emoji">🍋</span>
+  <span class="sea-emoji">🍬</span>
+  <span class="sea-emoji">🌊</span>
+  <span class="sea-emoji">🍬</span>
+  <span class="sea-emoji">🍋</span>
+  <span class="sea-emoji">🌊</span>
+</div>
+<div class="racing-car">🏎️<span class="car-trail"></span></div>
+<div class="racing-car racer-2">🏁<span class="car-trail"></span></div>
+
+<div class="float-deco" id="floatDeco"></div>
+
+<div class="page">
+
+  <header class="topbar">
+    <button type="button" class="back-btn" id="backBtn" aria-label="返回">←</button>
+    <span class="topbar-title">字卡库</span>
+  </header>
+
+  <p class="lib-hint">各模块字卡都在这里 · 添加后会进入对应模块随机出现 · 点卡片修改 · ✕ 删除</p>
+
+  <!-- 字卡分组：由脚本按模块渲染 -->
+  <div id="libGroups"></div>
+
+</div>
+
+<script src="config.js"></script>
+<script src="moments.js"></script>
+<script>
+(function () {
+  'use strict';
+  var store = window.WordCardStore;
+
+  /* 应用全局配色 */
+  var root = document.documentElement;
+  root.style.setProperty('--grad-from', SITE_CONFIG.global.gradientFrom);
+  root.style.setProperty('--grad-to', SITE_CONFIG.global.gradientTo);
+  root.style.setProperty('--text-color', SITE_CONFIG.global.textColor);
+  document.title = SITE_CONFIG.global.siteTitle + ' · 字卡库';
+
+  /* 各模块字卡分组：存储键 / 图标 / 标题 / 占位 / 空提示 */
+  var GROUPS = [
+    { key: 'lover_chat_cards', icon: '💬', title: '和他聊天', inputPH: '写下想对他说的话…', empty: '还没有聊天字卡，写一张吧～' },
+    { key: 'lover_mood_cards', icon: '💗', title: '我的心情', inputPH: '此刻的心情…', empty: '还没有心情字卡～' },
+    { key: 'lover_status_cards', icon: '🚦', title: '我的状态', inputPH: '我的状态…', empty: '还没有状态字卡～' },
+    { key: 'lover_timer_cards', icon: '📚', title: '学习互动', inputPH: '想让他知道的话…', empty: '还没有互动字卡～' }
+  ];
+
+  var wrap = document.getElementById('libGroups');
+
+  GROUPS.forEach(function (cfg) {
+    wrap.appendChild(buildGroup(cfg));
+  });
+
+  /* ---------- 构建一个分组：标题 + 添加栏 + 卡片墙（可增 / 删 / 改） ---------- */
+  function buildGroup(cfg) {
+    var sec = document.createElement('section');
+    sec.className = 'card-lib-group';
+
+    /* 头部：分组名 + 数量 */
+    var head = document.createElement('div');
+    head.className = 'card-section-head';
+    var title = document.createElement('span');
+    title.className = 'card-section-title';
+    title.textContent = cfg.icon + ' ' + cfg.title;
+    var count = document.createElement('span');
+    count.className = 'card-count';
+    head.appendChild(title);
+    head.appendChild(count);
+
+    /* 添加输入行 */
+    var row = document.createElement('div');
+    row.className = 'card-input-row';
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.maxLength = 30;
+    input.placeholder = cfg.inputPH;
+    var addBtn = document.createElement('button');
+    addBtn.className = 'card-add-btn';
+    addBtn.setAttribute('aria-label', '添加字卡');
+    addBtn.textContent = '＋';
+    row.appendChild(input);
+    row.appendChild(addBtn);
+
+    var grid = document.createElement('div');
+    grid.className = 'card-grid';
+
+    sec.appendChild(head);
+    sec.appendChild(row);
+    sec.appendChild(grid);
+
+    /* ---------- 渲染卡片墙 ---------- */
+    function render() {
+      var list = store.get(cfg.key);
+      count.textContent = list.length ? list.length + ' 张' : '';
+      grid.innerHTML = '';
+      if (!list.length) {
+        var empty = document.createElement('div');
+        empty.className = 'card-empty';
+        empty.textContent = cfg.empty;
+        grid.appendChild(empty);
+        return;
+      }
+      list.forEach(function (card) {
+        var el = document.createElement('div');
+        el.className = 'word-card';
+        el.setAttribute('data-cid', card.id);
+
+        var textEl = document.createElement('span');
+        textEl.className = 'card-text';
+        textEl.textContent = card.text;
+        el.appendChild(textEl);
+
+        var del = document.createElement('button');
+        del.className = 'card-del';
+        del.setAttribute('aria-label', '删除字卡');
+        del.textContent = '✕';
+        del.addEventListener('click', function (e) {
+          e.stopPropagation();
+          store.remove(cfg.key, card.id);
+          render();
+        });
+        el.appendChild(del);
+
+        el.addEventListener('click', function () { startEdit(el, card); });
+
+        grid.appendChild(el);
+      });
+    }
+
+    /* ---------- 点击卡片 -> 就地编辑 ---------- */
+    function startEdit(el, card) {
+      var cur = grid.querySelector('.word-card.editing');
+      if (cur === el) return;
+      /* 若已有别的卡在编辑，先保存它（render 会重建整组） */
+      if (cur && cur._commit) cur._commit();
+      var fresh = grid.querySelector('.word-card[data-cid="' + card.id + '"]');
+      if (fresh) el = fresh;
+      if (el.classList.contains('editing')) return;
+
+      el.classList.add('editing');
+      var textEl = el.querySelector('.card-text');
+      textEl.style.visibility = 'hidden';
+
+      var editInput = document.createElement('input');
+      editInput.className = 'card-edit-input';
+      editInput.type = 'text';
+      editInput.maxLength = 30;
+      editInput.value = card.text;
+      el.appendChild(editInput);
+      editInput.focus();
+
+      var done = false;
+      var discard = false;
+      function commit() {
+        if (done) return;
+        done = true;
+        el._commit = null;
+        var v = editInput.value.trim();
+        if (!discard && v && v !== card.text) {
+          store.update(cfg.key, card.id, v);
+        }
+        render();
+      }
+      el._commit = commit;
+
+      editInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); commit(); }
+        else if (e.key === 'Escape') { discard = true; editInput.blur(); }
+      });
+      editInput.addEventListener('blur', commit);
+    }
+
+    /* ---------- 添加 ---------- */
+    function tryAdd() {
+      var v = input.value.trim();
+      if (!v) {
+        input.classList.add('shake');
+        setTimeout(function () { input.classList.remove('shake'); }, 450);
+        return;
+      }
+      if (store.add(cfg.key, v)) {
+        input.value = '';
+        render();
+      }
+    }
+    addBtn.addEventListener('click', tryAdd);
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') tryAdd(); });
+
+    render();
+    return sec;
+  }
+
+  /* ---------- 返回：优先回到上一页，兜底回主页 ---------- */
+  document.getElementById('backBtn').addEventListener('click', function () {
+    if (window.history.length > 1) window.history.back();
+    else window.location.href = 'index.html';
+  });
+
+  /* 漂浮装饰 */
+  var deco = document.getElementById('floatDeco');
+  var symbols = ['💗', '✨', '🎴', '💬', '💌', '📚', '🌙', '🚦'];
+  for (var i = 0; i < 12; i++) {
+    var s = document.createElement('span');
+    s.textContent = symbols[i % symbols.length];
+    s.style.left = (Math.random() * 100) + '%';
+    s.style.fontSize = (12 + Math.random() * 14) + 'px';
+    s.style.animationDuration = (10 + Math.random() * 14) + 's';
+    s.style.animationDelay = (-Math.random() * 16) + 's';
+    deco.appendChild(s);
+  }
+})();
+</script>
+</body>
+</html>

@@ -73,7 +73,6 @@ const SITE_CONFIG = {
     "sendButtonText": "发送",
     "typingText": "对方正在输入…",
     "replyDelayMs": 1000,
-    "keywordRules": [],
     "randomReplies": [
       "你生气的时候希望我哄你还是让你静一静",
       "你难过的时候想让我抱你还是陪你说话",

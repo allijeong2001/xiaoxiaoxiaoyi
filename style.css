@@ -1245,3 +1245,97 @@ body { background: linear-gradient(160deg, var(--grad-from, #040a26), var(--grad
 }
 .chat-card-input-row input::placeholder { color: #7d92c9; }
 .chat-card-input-row .card-add-btn { height: 36px; width: 40px; }
+
+/* =====================================================
+ * 字卡库页（cards.html）
+ * ===================================================== */
+.lib-hint {
+  width: 100%;
+  text-align: center;
+  font-size: 12.5px;
+  letter-spacing: 1px;
+  color: #8fa3d9;
+  margin: -6px 0 6px;
+  z-index: 1;
+}
+.card-lib-group {
+  width: 100%;
+  margin-top: 14px;
+  padding: 14px 14px 18px;
+  border-radius: 18px;
+  background: rgba(23, 32, 84, .55);
+  border: 1px solid rgba(122, 162, 255, .3);
+  box-shadow: 0 6px 20px rgba(10, 16, 50, .4);
+  z-index: 1;
+}
+.card-lib-group .card-section-head { margin-bottom: 10px; }
+.card-lib-group .card-section-title { font-size: 15px; }
+.card-lib-group .card-section-title::before { content: ""; }
+.card-lib-group .card-count { font-size: 12px; color: #8fa3d9; letter-spacing: 1px; }
+.card-lib-group .card-input-row { margin-bottom: 12px; }
+.card-lib-group .card-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.card-lib-group .word-card { min-height: 58px; }
+
+/* 点击卡片就地编辑 */
+.word-card .card-text { display: block; }
+.word-card.editing { border-color: #fcd34d; box-shadow: 0 0 0 2px rgba(252, 211, 77, .3); cursor: text; }
+.word-card.editing .card-del { display: none; }
+.word-card.editing .card-text { visibility: hidden; }
+.word-card .card-edit-input {
+  position: absolute;
+  left: 6px; right: 6px;
+  top: 7px; bottom: 7px;
+  width: auto;
+  border: none;
+  outline: none;
+  border-radius: 10px;
+  background: rgba(10, 16, 50, .8);
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+  padding: 0 4px;
+}
+
+/* 主页字卡库入口 */
+.home-entry-row {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  z-index: 1;
+}
+.lib-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 30px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(122, 162, 255, .22), rgba(180, 140, 255, .22));
+  border: 1.5px solid rgba(150, 180, 255, .55);
+  color: #e6ecff;
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  box-shadow: 0 6px 18px rgba(40, 60, 150, .35);
+  transition: transform .15s, background .2s;
+}
+.lib-entry:active { transform: scale(.93); background: linear-gradient(135deg, rgba(122, 162, 255, .38), rgba(180, 140, 255, .38)); }
+
+/* 聊天页顶部的字卡库入口 */
+.chat-lib-btn {
+  margin-left: auto;
+  flex: none;
+  height: 30px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fcd34d, #ffb45c);
+  color: #2b2340;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+  transition: transform .15s;
+}
+.chat-lib-btn:active { transform: scale(.92); }
