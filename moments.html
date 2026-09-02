@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>萧逸的朋友圈</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="starfield"></div>
+<div class="lemon-sea">
+  <span class="sea-emoji">🍋</span>
+  <span class="sea-emoji">🍬</span>
+  <span class="sea-emoji">🌊</span>
+  <span class="sea-emoji">🍬</span>
+  <span class="sea-emoji">🍋</span>
+  <span class="sea-emoji">🌊</span>
+</div>
+<div class="racing-car">🏎️<span class="car-trail"></span></div>
+<div class="racing-car racer-2">🏁<span class="car-trail"></span></div>
+
+<div class="float-deco" id="floatDeco"></div>
+
+<div class="page">
+
+  <header class="topbar">
+    <a class="back-btn" href="index.html" aria-label="返回主页">←</a>
+    <span class="topbar-title" id="pageTitle"></span>
+  </header>
+
+  <!-- 恋人世界头部 -->
+  <div class="moments-hero">
+    <div class="hero-title" id="heroTitle"></div>
+    <div class="hero-clock">萧逸的世界 · 现在：<b id="heroTime">--:--</b></div>
+    <div class="hero-activity">
+      <span id="heroActivity">…</span>
+      <span class="act-time" id="heroActivityTime"></span>
+    </div>
+    <button class="moments-refresh" id="refreshAct"></button>
+  </div>
+
+  <!-- 我的心情字卡 -->
+  <div class="moments-card">
+    <div class="card-section-head">
+      <span class="card-section-title mood" id="moodLabel"></span>
+    </div>
+    <div class="card-input-row">
+      <input type="text" id="moodInput" maxlength="30">
+      <button class="card-add-btn" id="moodAdd" aria-label="添加心情字卡">＋</button>
+    </div>
+    <div class="card-grid" id="moodGrid"></div>
+  </div>
+
+  <!-- 我的状态字卡 -->
+  <div class="moments-card">
+    <div class="card-section-head">
+      <span class="card-section-title status" id="statusLabel"></span>
+    </div>
+    <div class="card-input-row">
+      <input type="text" id="statusInput" maxlength="30">
+      <button class="card-add-btn" id="statusAdd" aria-label="添加状态字卡">＋</button>
+    </div>
+    <div class="card-grid" id="statusGrid"></div>
+  </div>
+
+</div>
+
+<script src="config.js"></script>
+<script src="moments.js"></script>
+<script>
+(function () {
+  var g = SITE_CONFIG.global;
+  var m = SITE_CONFIG.moments;
+
+  var root = document.documentElement;
+  root.style.setProperty('--grad-from', g.gradientFrom);
+  root.style.setProperty('--grad-to', g.gradientTo);
+  root.style.setProperty('--text-color', g.textColor);
+  document.title = g.siteTitle + ' · ' + m.pageTitle;
+
+  document.getElementById('pageTitle').textContent = m.pageTitle;
+  document.getElementById('heroTitle').textContent = m.worldName;
+  document.getElementById('moodLabel').textContent = m.moodCardLabel;
+  document.getElementById('statusLabel').textContent = m.statusCardLabel;
+  document.getElementById('moodInput').placeholder = m.moodPlaceholder;
+  document.getElementById('statusInput').placeholder = m.statusPlaceholder;
+  document.getElementById('refreshAct').textContent = m.refreshText;
+  document.getElementById('moodAdd').textContent = m.addButtonText;
+  document.getElementById('statusAdd').textContent = m.addButtonText;
+
+  var store = window.WordCardStore;
+  var moodGrid = document.getElementById('moodGrid');
+  var statusGrid = document.getElementById('statusGrid');
+  var MOOD_KEY = 'lover_mood_cards';
+  var STATUS_KEY = 'lover_status_cards';
+
+  /* 字卡：添加 */
+  function bindAdd(inputId, btnId, key, grid, empty) {
+    var input = document.getElementById(inputId);
+    function tryAdd() {
+      if (store.add(key, input.value)) {
+        input.value = '';
+        store.render(grid, key, empty);
+      } else {
+        input.classList.add('shake');
+        setTimeout(function () { input.classList.remove('shake'); }, 450);
+      }
+    }
+    document.getElementById(btnId).addEventListener('click', tryAdd);
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') tryAdd(); });
+  }
+
+  bindAdd('moodInput', 'moodAdd', MOOD_KEY, moodGrid, '还没有心情字卡，写一张吧～');
+  bindAdd('statusInput', 'statusAdd', STATUS_KEY, statusGrid, '还没有状态字卡，写一张吧～');
+
+  /* 恋人世界头部：实时时钟 + 系统随机展示用户字卡 */
+  var heroTime = document.getElementById('heroTime');
+  var heroActivity = document.getElementById('heroActivity');
+  var heroActivityTime = document.getElementById('heroActivityTime');
+
+  function tick() {
+    heroTime.textContent = window.LoverMoments.virtualTime();
+  }
+  tick();
+  setInterval(tick, 30000);
+
+  function showActivity() {
+    var pick = window.LoverMoments.randomUserCard();
+    if (pick) {
+      heroActivity.textContent = (pick.type === 'mood' ? '心情 · ' : '状态 · ') + pick.text;
+    } else {
+      heroActivity.textContent = m.emptyCardsText;
+    }
+    var d = new Date();
+    var hh = d.getHours(), mm = d.getMinutes();
+    heroActivityTime.textContent = '系统在 ' + (hh < 10 ? '0' + hh : hh) + ':' + (mm < 10 ? '0' + mm : mm) + ' 随机展示';
+  }
+  showActivity();
+  document.getElementById('refreshAct').addEventListener('click', function () {
+    showActivity();
+    this.textContent = '✨ 又随机展示了一条';
+    var self = this;
+    setTimeout(function () { self.textContent = m.refreshText; }, 1600);
+  });
+
+  /* 漂浮装饰 */
+  var deco = document.getElementById('floatDeco');
+  var symbols = ['💗', '✨', '🍋', '🍬', '🏎️', '🏁', '🌟'];
+  for (var i = 0; i < 12; i++) {
+    var s = document.createElement('span');
+    s.textContent = symbols[i % symbols.length];
+    s.style.left = (Math.random() * 100) + '%';
+    s.style.fontSize = (12 + Math.random() * 15) + 'px';
+    s.style.animationDuration = (10 + Math.random() * 14) + 's';
+    s.style.animationDelay = (-Math.random() * 16) + 's';
+    deco.appendChild(s);
+  }
+})();
+</script>
+</body>
+</html>

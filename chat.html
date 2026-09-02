@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>聊天</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="starfield"></div>
+<div class="lemon-sea">
+  <span class="sea-emoji">🍋</span>
+  <span class="sea-emoji">🍬</span>
+  <span class="sea-emoji">🌊</span>
+  <span class="sea-emoji">🍬</span>
+  <span class="sea-emoji">🍋</span>
+  <span class="sea-emoji">🌊</span>
+</div>
+<div class="racing-car">🏎️<span class="car-trail"></span></div>
+<div class="racing-car racer-2">🏁<span class="car-trail"></span></div>
+
+<div class="chat-app" id="chatApp">
+
+  <!-- 顶部：返回 + 对方昵称 -->
+  <header class="chat-header">
+    <a class="back-btn" href="index.html" aria-label="返回主页">←</a>
+    <span class="chat-title" id="chatTitle"></span>
+  </header>
+
+  <!-- 聊天记录（仅当前会话有效，刷新即清空） -->
+  <main class="chat-messages" id="messages"></main>
+
+  <!-- 字卡栏：可添加 / 删除 / 点击发送，本地存储 -->
+  <div class="chat-card-bar">
+    <div class="chat-cards" id="chatCards"></div>
+    <div class="chat-card-input-row" id="chatCardInputRow" style="display:none">
+      <input type="text" id="chatCardInput" maxlength="30" placeholder="写下新的字卡，回车确认…">
+      <button class="card-add-btn" id="chatCardAdd" aria-label="添加字卡">＋</button>
+    </div>
+  </div>
+
+  <!-- 底部输入栏 -->
+  <footer class="chat-input-bar">
+    <input type="text" id="chatInput" autocomplete="off" maxlength="500">
+    <button id="sendBtn"></button>
+  </footer>
+</div>
+
+<script src="config.js"></script>
+<script src="moments.js"></script>
+<script>
+(function () {
+  var g = SITE_CONFIG.global;
+  var c = SITE_CONFIG.chat;
+
+  /* 应用全局配色与气泡颜色 */
+  var root = document.documentElement;
+  root.style.setProperty('--grad-from', g.gradientFrom);
+  root.style.setProperty('--grad-to', g.gradientTo);
+  root.style.setProperty('--text-color', g.textColor);
+  root.style.setProperty('--partner-bubble', c.partnerBubbleColor);
+  root.style.setProperty('--partner-bubble-text', c.partnerBubbleTextColor);
+  root.style.setProperty('--user-bubble', c.userBubbleColor);
+  root.style.setProperty('--user-bubble-text', c.userBubbleTextColor);
+  document.title = g.siteTitle + ' · ' + c.pageTitle;
+
+  /* 顶部与输入栏文案 */
+  document.getElementById('chatTitle').textContent = c.partnerName;
+  var input = document.getElementById('chatInput');
+  input.placeholder = c.inputPlaceholder;
+  document.getElementById('sendBtn').textContent = c.sendButtonText;
+
+  var msgBox = document.getElementById('messages');
+  var sendBtn = document.getElementById('sendBtn');
+  var waiting = false; // 是否正在等待对方回复
+
+  /* ---------- 消息渲染 ---------- */
+  function addMessage(who, text) {
+    var msg = document.createElement('div');
+    msg.className = 'msg ' + who;
+
+    var avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    if (who === 'partner') {
+      avatar.style.background = c.partnerAvatarColor;
+      avatar.textContent = c.partnerAvatarText;
+    } else {
+      avatar.style.background = c.userAvatarColor;
+      avatar.textContent = c.userAvatarText;
+    }
+
+    var bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text; // textContent 防注入
+
+    msg.appendChild(avatar);
+    msg.appendChild(bubble);
+    msgBox.appendChild(msg);
+    scrollToBottom();
+    return msg;
+  }
+
+  function addTyping() {
+    var msg = document.createElement('div');
+    msg.className = 'msg partner';
+    msg.id = 'typingMsg';
+    msg.innerHTML =
+      '<div class="avatar" style="background:' + c.partnerAvatarColor + '">' + escapeHtml(c.partnerAvatarText) + '</div>' +
+      '<div class="bubble"><span class="typing-dots"><i></i><i></i><i></i></span></div>';
+    msgBox.appendChild(msg);
+    scrollToBottom();
+  }
+
+  function removeTyping() {
+    var t = document.getElementById('typingMsg');
+    if (t && t.parentNode) t.parentNode.removeChild(t);
+  }
+
+  function scrollToBottom() {
+    requestAnimationFrame(function () {
+      msgBox.scrollTop = msgBox.scrollHeight;
+    });
+  }
+
+  /* ---------- 回复抽取逻辑 ---------- */
+  function pickReply(userText) {
+    var lower = String(userText).toLowerCase();
+    // 关键词规则优先：输入包含任一关键词 -> 从对应回复中随机抽取
+    for (var i = 0; i < (c.keywordRules || []).length; i++) {
+      var rule = c.keywordRules[i];
+      var hit = (rule.keywords || []).some(function (kw) {
+        return kw && lower.indexOf(String(kw).toLowerCase()) !== -1;
+      });
+      if (hit && rule.replies && rule.replies.length) {
+        return rule.replies[Math.floor(Math.random() * rule.replies.length)];
+      }
+    }
+    // 未命中关键词 -> 从 99 条随机回复中抽取
+    var list = c.randomReplies || [];
+    if (!list.length) return '……';
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
+  /* ---------- 发送 ---------- */
+  function send() {
+    var text = input.value.trim();
+    if (!text || waiting) return;
+    input.value = '';
+    addMessage('user', text);
+    waiting = true;
+    sendBtn.disabled = true;
+    sendBtn.style.opacity = '.6';
+
+    var delay = Number(c.replyDelayMs) || 1000;
+    setTimeout(function () {
+      addTyping();
+    }, Math.max(0, delay - 700));
+
+    setTimeout(function () {
+      removeTyping();
+      addMessage('partner', pickReply(text));
+      waiting = false;
+      sendBtn.disabled = false;
+      sendBtn.style.opacity = '1';
+    }, delay);
+  }
+
+  sendBtn.addEventListener('click', send);
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') send();
+  });
+
+  /* ---------- 字卡栏：添加 / 删除 / 点击发送 ---------- */
+  var store = window.WordCardStore;
+  var CARD_KEY = 'lover_chat_cards';
+  var chatCards = document.getElementById('chatCards');
+  var cardInputRow = document.getElementById('chatCardInputRow');
+  var cardInput = document.getElementById('chatCardInput');
+
+  function toggleCardInput() {
+    cardInputRow.style.display = (cardInputRow.style.display === 'none') ? 'flex' : 'none';
+    if (cardInputRow.style.display === 'flex') cardInput.focus();
+  }
+
+  function renderChatCards() {
+    var list = store.get(CARD_KEY);
+    chatCards.innerHTML = '';
+
+    var addChip = document.createElement('button');
+    addChip.className = 'chat-chip chat-chip-add';
+    addChip.textContent = '＋';
+    addChip.setAttribute('aria-label', '添加字卡');
+    addChip.addEventListener('click', toggleCardInput);
+    chatCards.appendChild(addChip);
+
+    list.forEach(function (card) {
+      var chip = document.createElement('button');
+      chip.className = 'chat-chip';
+      chip.textContent = card.text;
+      chip.addEventListener('click', function () {
+        if (!waiting) {
+          input.value = card.text;
+          send();
+        }
+      });
+
+      var del = document.createElement('span');
+      del.className = 'chat-chip-del';
+      del.textContent = '✕';
+      del.setAttribute('aria-label', '删除字卡');
+      del.addEventListener('click', function (e) {
+        e.stopPropagation();
+        store.remove(CARD_KEY, card.id);
+        renderChatCards();
+      });
+      chip.appendChild(del);
+      chatCards.appendChild(chip);
+    });
+  }
+
+  function addChatCard() {
+    if (store.add(CARD_KEY, cardInput.value)) {
+      cardInput.value = '';
+      toggleCardInput();
+      renderChatCards();
+    } else {
+      cardInput.classList.add('shake');
+      setTimeout(function () { cardInput.classList.remove('shake'); }, 450);
+    }
+  }
+  document.getElementById('chatCardAdd').addEventListener('click', addChatCard);
+  cardInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') addChatCard(); });
+
+  renderChatCards();
+
+  function escapeHtml(str) {
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+})();
+</script>
+</body>
+</html>
